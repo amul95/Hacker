@@ -1,0 +1,50 @@
+
+Unified_Machine_IP : 10.129.140.82
+
+1. Which are the first four open ports? 
+   Ans : 22,6789,8080,8443
+
+Hum sbse pehle scan hi karenge nmap ke through aur iska pehla sawal bhi yahi hai ki konse pehle 4 open ports hai uska ans dena hai 
+
+┌─[amulr@amul-x540sa]─[~]
+└──╼ $nmap -sC -sV 10.129.140.82
+
+Output :-
+        Starting Nmap 7.92 ( https://nmap.org ) at 2022-08-03 20:59 IST
+        Nmap scan report for 10.129.140.82 (10.129.140.82)
+        Host is up (0.16s latency).
+        Not shown: 995 closed tcp ports (conn-refused)
+        PORT     STATE    SERVICE         VERSION
+        22/tcp   open     ssh             OpenSSH 8.2p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+        2034/tcp filtered scoremgr
+        6789/tcp open     ibm-db2-admin?
+        8080/tcp open     http-proxy
+        8443/tcp open     ssl/nagios-nsca Nagios NSCA
+        
+        > pehle 4 mtlb ye nhi ki 22,2034,6789 aur 80808 kyun ki ye 4 me sirf 3 open hai baki dekho 2034 open nhi hai filtered hai 
+          islie jo open sirf usse hi mention krna hai ans me...
+          
+          
+2. What is title of the software that is running running on port 8443?
+   Ans: 10.129.140.82:8443
+   
+   > 2nd quetion ka ans find krne ke liye pehle muje try krna hoga woh site open krne ka toh mene open kia site 
+   
+        > http://10.129.140.82 & hit enter 
+          
+          # but site open nhi hua aur error aaya toh site me kese open kru ab 
+          
+        > Fir pata chala ki nmap me dekha usme http-proxy hai jo redirect krti hai 8443 wale port jis pr ssl server hai toh maybe 
+          ye site ke sath agar port jod doon fir dekhta hoon site open hoti hai ya nhi
+          
+          >  10.129.140.82:8443 & hit enter 
+          
+                hooray!! site open hogyi webpage dikha muje Unifi network krke kuch 
+                
+                
+                
+                
+        
+        
+        
+        
